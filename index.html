@@ -883,7 +883,7 @@ const CENOVNIK = { Bakar: 850, Aluminijum: 320, Celik: 95, Mesing: 580 };
 const POCETNO  = { Bakar: 5000, Aluminijum: 3000, Celik: 8000, Mesing: 2000 };
 
 // OVDE UBACI SVOJ WEB APP URL
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxaNxA5tXUdstlSI3oLUDRPBJXv7AKLLVaWSB28XPuSX6GsLhvvxsB494TluzrATf96/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwqF82Saz1bAN2XncJbGMggRsv7dM6psO5gDfQCYLBxq-QBGStX3SbbCzR43W35wE8E/exec";
 
 let fakture = [];
 let lager = { Bakar: 0, Aluminijum: 0, Celik: 0, Mesing: 0 };
@@ -943,10 +943,18 @@ function submitForm() {
   btn.textContent = 'Saljem...';
 
   // Ako imas Web App URL — salje na Google Sheets
-  if (WEB_APP_URL !== "https://script.google.com/macros/s/AKfycbxaNxA5tXUdstlSI3oLUDRPBJXv7AKLLVaWSB28XPuSX6GsLhvvxsB494TluzrATf96/exec") {
+  if (WEB_APP_URL !== "https://script.google.com/macros/s/AKfycbwqF82Saz1bAN2XncJbGMggRsv7dM6psO5gDfQCYLBxq-QBGStX3SbbCzR43W35wE8E/exec") {
     const params = new URLSearchParams({ kupac, metal, kolicina, datum });
-    const img = new Image();
-    img.src = WEB_APP_URL + '?' + params.toString();
+    const callbackName = 'cb_' + Date.now();
+    window[callbackName] = function(data) {
+      delete window[callbackName];
+      document.body.removeChild(script);
+    };
+    params.append('callback', callbackName);
+    const script = document.createElement('script');
+    script.src = WEB_APP_URL + '?' + params.toString();
+    script.onerror = () => {};
+    document.body.appendChild(script);
     setTimeout(() => processLocally(kupac, metal, kolicina, datum), 1500);
   } else {
     // Demo mod — radi lokalno bez Sheets
