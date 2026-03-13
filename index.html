@@ -883,7 +883,7 @@ const CENOVNIK = { Bakar: 850, Aluminijum: 320, Celik: 95, Mesing: 580 };
 const POCETNO  = { Bakar: 5000, Aluminijum: 3000, Celik: 8000, Mesing: 2000 };
 
 // OVDE UBACI SVOJ WEB APP URL
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwqF82Saz1bAN2XncJbGMggRsv7dM6psO5gDfQCYLBxq-QBGStX3SbbCzR43W35wE8E/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxHp8YRkisWOaZAJhGK0HTEtD9huUyk1E_3t7Aq3-GAV3Z84uLLbJqx5PuJmXOwmvgp/exec";
 
 let fakture = [];
 let lager = { Bakar: 0, Aluminijum: 0, Celik: 0, Mesing: 0 };
@@ -942,24 +942,23 @@ function submitForm() {
   btn.classList.add('loading');
   btn.textContent = 'Saljem...';
 
-  // Ako imas Web App URL — salje na Google Sheets
-  if (WEB_APP_URL !== "https://script.google.com/macros/s/AKfycbwqF82Saz1bAN2XncJbGMggRsv7dM6psO5gDfQCYLBxq-QBGStX3SbbCzR43W35wE8E/exec") {
-    const params = new URLSearchParams({ kupac, metal, kolicina, datum });
-    const callbackName = 'cb_' + Date.now();
-    window[callbackName] = function(data) {
-      delete window[callbackName];
-      document.body.removeChild(script);
-    };
-    params.append('callback', callbackName);
-    const script = document.createElement('script');
-    script.src = WEB_APP_URL + '?' + params.toString();
-    script.onerror = () => {};
-    document.body.appendChild(script);
-    setTimeout(() => processLocally(kupac, metal, kolicina, datum), 1500);
-  } else {
-    // Demo mod — radi lokalno bez Sheets
-    setTimeout(() => processLocally(kupac, metal, kolicina, datum), 800);
+  // Salje na Google Sheets preko forme
+  const form = document.createElement('form');
+  form.method = 'GET';
+  form.action = WEB_APP_URL;
+  form.target = 'hidden_iframe';
+  const fields = { kupac, metal, kolicina, datum };
+  for (const [k, v] of Object.entries(fields)) {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = k;
+    input.value = v;
+    form.appendChild(input);
   }
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+  setTimeout(() => processLocally(kupac, metal, kolicina, datum), 1500);
 }
 
 function processLocally(kupac, metal, kolicina, datum) {
@@ -1091,5 +1090,7 @@ document.getElementById('f-datum').value = new Date().toISOString().split('T')[0
 renderLager();
 renderDashboard();
 </script>
+
+<iframe name="hidden_iframe" style="display:none"></iframe>
 </body>
 </html>
