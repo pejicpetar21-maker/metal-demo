@@ -943,11 +943,11 @@ function submitForm() {
   btn.textContent = 'Saljem...';
 
   // Ako imas Web App URL — salje na Google Sheets
-  if (WEB_APP_URL !== "UBACI_OVDE_TVOJ_WEB_APP_URL") {
+  if (WEB_APP_URL !== "https://script.google.com/macros/s/AKfycbxaNxA5tXUdstlSI3oLUDRPBJXv7AKLLVaWSB28XPuSX6GsLhvvxsB494TluzrATf96/exec") {
     const params = new URLSearchParams({ kupac, metal, kolicina, datum });
-    fetch(WEB_APP_URL + '?' + params.toString(), { method: 'GET', mode: 'no-cors' })
-      .then(() => processLocally(kupac, metal, kolicina, datum))
-      .catch(() => processLocally(kupac, metal, kolicina, datum));
+    const img = new Image();
+    img.src = WEB_APP_URL + '?' + params.toString();
+    setTimeout(() => processLocally(kupac, metal, kolicina, datum), 1500);
   } else {
     // Demo mod — radi lokalno bez Sheets
     setTimeout(() => processLocally(kupac, metal, kolicina, datum), 800);
