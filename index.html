@@ -705,6 +705,7 @@
   }
 
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -990,7 +991,7 @@ const CENOVNIK = { Bakar: 850, Aluminijum: 320, Celik: 95, Mesing: 580 };
 const POCETNO  = { Bakar: 5000, Aluminijum: 3000, Celik: 8000, Mesing: 2000 };
 
 // OVDE UBACI SVOJ WEB APP URL
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxHp8YRkisWOaZAJhGK0HTEtD9huUyk1E_3t7Aq3-GAV3Z84uLLbJqx5PuJmXOwmvgp/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzUwLr_Rq0VWVIYyrHXAkr-24CCeGc6zAAeX7_WlhC8pNG97UpYMBJ3lTPPeTacWCru/exec";
 
 let fakture = [];
 let lager = { Bakar: 0, Aluminijum: 0, Celik: 0, Mesing: 0 };
@@ -1093,7 +1094,10 @@ function processLocally(kupac, metal, kolicina, datum) {
   const ukupno = cena * kolicina;
   const br     = fakture.length + 1;
 
-  fakture.unshift({ br, datum, kupac, metal, kolicina, cena, ukupno });
+  const novaFaktura = { br, datum, kupac, metal, kolicina, cena, ukupno };
+  fakture.unshift(novaFaktura);
+  // Generisi PDF
+  setTimeout(() => generisiPDF(novaFaktura), 500);
   lager[metal] = (lager[metal] || 0) + kolicina;
 
   // Reset forme
