@@ -749,6 +749,10 @@
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
       Lager
     </div>
+    <div class="nav-item" onclick="showPage('otkup')">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      Otkup
+    </div>
   </nav>
 
   <!-- MAIN -->
@@ -830,8 +834,15 @@
           <div class="card-body">
             <div class="form-grid">
               <div class="form-group full">
-                <label>Naziv kupca</label>
+                <label id="kupac-label">Naziv kupca</label>
                 <input type="text" id="f-kupac" placeholder="npr. ABC Metal doo" />
+              </div>
+              <div class="form-group">
+                <label>Tip transakcije</label>
+                <select id="f-tip" onchange="updateTipUI()">
+                  <option value="prodaja">Prodaja</option>
+                  <option value="otkup">Otkup</option>
+                </select>
               </div>
               <div class="form-group">
                 <label>Vrsta metala</label>
@@ -877,7 +888,7 @@
 
             <button class="btn btn-primary" id="submit-btn" onclick="submitForm()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
-              Generisi fakturu
+              <span id="submit-label">Generisi fakturu</span>
             </button>
           </div>
         </div>
@@ -973,6 +984,39 @@
       </div>
     </div>
 
+
+    <!-- OTKUP -->
+    <div class="page" id="page-otkup">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Istorija <span style="color:var(--green)">otkupa</span></div>
+          <div class="page-sub">// svi otkupljeni metali</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body" style="padding:0">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Datum</th>
+                  <th>Dobavljac</th>
+                  <th>Metal</th>
+                  <th>Kolicina</th>
+                  <th>Cena/kg</th>
+                  <th>Ukupno</th>
+                </tr>
+              </thead>
+              <tbody id="otkup-table">
+                <tr><td colspan="7"><div class="empty"><div class="empty-icon">📦</div><div class="empty-text">Nema otkupa jos — dodaj prvi</div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -991,9 +1035,10 @@ const CENOVNIK = { Bakar: 850, Aluminijum: 320, Celik: 95, Mesing: 580 };
 const POCETNO  = { Bakar: 5000, Aluminijum: 3000, Celik: 8000, Mesing: 2000 };
 
 // OVDE UBACI SVOJ WEB APP URL
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzUwLr_Rq0VWVIYyrHXAkr-24CCeGc6zAAeX7_WlhC8pNG97UpYMBJ3lTPPeTacWCru/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxcW1aVfqlfMP2TvDBYeTB5uEicM10ggm4G2M6kpxbPp1-6HxJucfun38wLhHfDGIL5/exec";
 
 let fakture = [];
+let otkupi = [];
 let lager = { Bakar: 0, Aluminijum: 0, Celik: 0, Mesing: 0 };
 
 // ── NAVIGATION ───────────────────────────────────────────────
@@ -1011,6 +1056,7 @@ function showPage(name) {
   event.currentTarget.classList.add('active');
   if (name === 'lager') renderLager();
   if (name === 'fakture') renderFaktureTable();
+  if (name === 'otkup') renderOtkupTable();
   if (name === 'dashboard') renderDashboard();
 }
 
@@ -1055,11 +1101,22 @@ function updatePreview() {
 }
 
 // ── SUBMIT ───────────────────────────────────────────────────
+function updateTipUI() {
+  const tip = document.getElementById('f-tip').value;
+  const isProdaja = tip === 'prodaja';
+  document.getElementById('kupac-label').textContent = isProdaja ? 'Naziv kupca' : 'Naziv dobavljaca';
+  document.getElementById('f-kupac').placeholder = isProdaja ? 'npr. ABC Metal doo' : 'npr. Dobavljac doo';
+  document.getElementById('submit-label').textContent = isProdaja ? 'Generisi fakturu' : 'Evidentiraj otkup';
+  const btn = document.getElementById('submit-btn');
+  btn.style.background = isProdaja ? 'var(--accent)' : 'var(--green)';
+}
+
 function submitForm() {
   const kupac    = document.getElementById('f-kupac').value.trim();
   const metal    = document.getElementById('f-metal').value;
   const kolicina = parseFloat(document.getElementById('f-kolicina').value);
   const datum    = document.getElementById('f-datum').value;
+  const tip      = document.getElementById('f-tip').value;
 
   if (!kupac || !metal || !kolicina || !datum) {
     showToast('error', 'Greska', 'Popuni sva polja pre generisanja fakture.');
@@ -1089,16 +1146,25 @@ function submitForm() {
   setTimeout(() => processLocally(kupac, metal, kolicina, datum), 1500);
 }
 
-function processLocally(kupac, metal, kolicina, datum) {
+function processLocally(kupac, metal, kolicina, datum, tip) {
   const cena   = CENOVNIK[metal];
   const ukupno = cena * kolicina;
-  const br     = fakture.length + 1;
+  const isProdaja = tip !== 'otkup';
+  const br     = isProdaja ? (fakture.length + 1) : (otkupi.length + 1);
 
-  const novaFaktura = { br, datum, kupac, metal, kolicina, cena, ukupno };
-  fakture.unshift(novaFaktura);
+  const novaFaktura = { br, datum, kupac, metal, kolicina, cena, ukupno, tip };
+
+  if (isProdaja) {
+    fakture.unshift(novaFaktura);
+    lager[metal] = (lager[metal] || 0) + kolicina;
+  } else {
+    otkupi.unshift(novaFaktura);
+    // Otkup povecava pocetno stanje
+    POCETNO[metal] = (POCETNO[metal] || 0) + kolicina;
+  }
+
   // Generisi PDF
   setTimeout(() => generisiPDF(novaFaktura), 500);
-  lager[metal] = (lager[metal] || 0) + kolicina;
 
   // Reset forme
   document.getElementById('f-kupac').value    = '';
@@ -1139,6 +1205,25 @@ function renderDashboard() {
   document.getElementById('stat-fakture').textContent = fakture.length;
   document.getElementById('stat-promet').textContent = total.toLocaleString() + ' RSD';
   document.getElementById('stat-kg').textContent = totalKg.toLocaleString() + ' kg';
+}
+
+function renderOtkupTable() {
+  const tbody = document.getElementById('otkup-table');
+  if (!tbody) return;
+  if (otkupi.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="empty-icon">📦</div><div class="empty-text">Nema otkupa jos</div></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = otkupi.map(f => `
+    <tr>
+      <td class="td-primary">#${f.br}</td>
+      <td>${f.datum}</td>
+      <td style="color:var(--text);font-weight:600">${f.kupac}</td>
+      <td><span class="badge" style="background:rgba(76,175,121,0.1);color:var(--green)">${f.metal}</span></td>
+      <td style="font-family:var(--font-mono)">${f.kolicina.toLocaleString()} kg</td>
+      <td style="font-family:var(--font-mono)">${f.cena.toLocaleString()} RSD</td>
+      <td style="font-family:var(--font-mono);color:var(--green);font-weight:700">${f.ukupno.toLocaleString()} RSD</td>
+    </tr>`).join('');
 }
 
 function renderFaktureTable() {
@@ -1241,7 +1326,9 @@ function generisiPDF(faktura) {
   doc.setTextColor(192, 57, 43);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('FAKTURA #' + faktura.br, 15, 55);
+  var docTip = faktura.tip === 'otkup' ? 'OTKUP #' : 'FAKTURA #';
+  var strankaLabel = faktura.tip === 'otkup' ? 'Dobavljac:' : 'Kupac:';
+  doc.text(docTip + faktura.br, 15, 55);
 
   // Info box
   doc.setFillColor(245, 245, 245);
@@ -1250,7 +1337,7 @@ function generisiPDF(faktura) {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.text('Datum:', 20, 72);
-  doc.text('Kupac:', 80, 72);
+  doc.text(strankaLabel, 80, 72);
   doc.setTextColor(30, 30, 30);
   doc.setFont('helvetica', 'bold');
   doc.text(String(faktura.datum), 20, 80);
@@ -1298,7 +1385,8 @@ function generisiPDF(faktura) {
   doc.text('MetalFlow — Automatizovani sistem fakturisanja', 15, 281);
   doc.text('Generisano: ' + new Date().toLocaleString('sr'), 15, 289);
 
-  doc.save('Faktura_' + faktura.br + '_' + faktura.kupac + '.pdf');
+  var prefix = faktura.tip === 'otkup' ? 'Otkup' : 'Faktura';
+  doc.save(prefix + '_' + faktura.br + '_' + faktura.kupac + '.pdf');
 }
 </script>
 
