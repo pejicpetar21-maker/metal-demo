@@ -1146,7 +1146,7 @@ function submitForm() {
   form.method = 'GET';
   form.action = WEB_APP_URL;
   form.target = 'hidden_iframe';
-  const fields = { kupac, metal, kolicina, datum };
+  const fields = { kupac, metal, kolicina, datum, tip };
   for (const [k, v] of Object.entries(fields)) {
     const input = document.createElement('input');
     input.type = 'hidden';
