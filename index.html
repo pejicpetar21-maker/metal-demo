@@ -1220,6 +1220,86 @@ function showToast(type, title, msg) {
 document.getElementById('f-datum').value = new Date().toISOString().split('T')[0];
 renderLager();
 renderDashboard();
+
+function generisiPDF(faktura) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Header
+  doc.setFillColor(26, 26, 46);
+  doc.rect(0, 0, 210, 40, 'F');
+  doc.setTextColor(232, 197, 71);
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.text('MetalFlow', 15, 18);
+  doc.setTextColor(170, 170, 170);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Sistem upravljanja sekundarnim metalom', 15, 27);
+
+  // Title
+  doc.setTextColor(192, 57, 43);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('FAKTURA #' + faktura.br, 15, 55);
+
+  // Info box
+  doc.setFillColor(245, 245, 245);
+  doc.rect(15, 62, 180, 28, 'F');
+  doc.setTextColor(100, 100, 100);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Datum:', 20, 72);
+  doc.text('Kupac:', 80, 72);
+  doc.setTextColor(30, 30, 30);
+  doc.setFont('helvetica', 'bold');
+  doc.text(String(faktura.datum), 20, 80);
+  doc.text(String(faktura.kupac), 80, 80);
+
+  // Table header
+  doc.setFillColor(26, 26, 46);
+  doc.rect(15, 100, 180, 10, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Metal', 20, 107);
+  doc.text('Kolicina (kg)', 75, 107);
+  doc.text('Cena/kg (RSD)', 115, 107);
+  doc.text('Ukupno (RSD)', 155, 107);
+
+  // Table row
+  doc.setFillColor(249, 249, 249);
+  doc.rect(15, 110, 180, 12, 'F');
+  doc.setTextColor(30, 30, 30);
+  doc.setFont('helvetica', 'normal');
+  doc.text(String(faktura.metal), 20, 118);
+  doc.text(String(faktura.kolicina), 75, 118);
+  doc.text(String(faktura.cena), 115, 118);
+  doc.text(String(faktura.ukupno), 155, 118);
+
+  // Total line
+  doc.setDrawColor(26, 26, 46);
+  doc.setLineWidth(0.5);
+  doc.line(15, 130, 195, 130);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 30, 30);
+  doc.text('UKUPNO ZA NAPLATU:', 15, 142);
+  doc.setTextColor(192, 57, 43);
+  doc.setFontSize(16);
+  doc.text(String(faktura.ukupno) + ' RSD', 130, 142);
+
+  // Footer
+  doc.setFillColor(26, 26, 46);
+  doc.rect(0, 270, 210, 27, 'F');
+  doc.setTextColor(170, 170, 170);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('MetalFlow — Automatizovani sistem fakturisanja', 15, 281);
+  doc.text('Generisano: ' + new Date().toLocaleString('sr'), 15, 289);
+
+  doc.save('Faktura_' + faktura.br + '_' + faktura.kupac + '.pdf');
+}
 </script>
 
 <iframe name="hidden_iframe" style="display:none"></iframe>
