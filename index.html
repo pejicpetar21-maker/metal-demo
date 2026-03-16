@@ -704,6 +704,20 @@
     main { padding: 16px 12px; }
   }
 
+
+  @media (max-width: 768px) {
+    .two-col { grid-template-columns: 1fr !important; }
+    .lager-grid { grid-template-columns: 1fr !important; }
+    .stats-grid { grid-template-columns: 1fr 1fr !important; }
+    .form-grid { grid-template-columns: 1fr !important; }
+    .form-group.full { grid-column: 1 !important; }
+    .page-title { font-size: 20px !important; }
+    .table-wrap { overflow-x: auto; }
+    table { min-width: 480px; }
+  }
+  @media (max-width: 400px) {
+    .stats-grid { grid-template-columns: 1fr !important; }
+  }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -785,7 +799,7 @@
         </div>
         <div class="stat-card">
           <div class="stat-label">Status lagera</div>
-          <div class="stat-value up">OK</div>
+          <div class="stat-value up" id="stat-lager-status">OK</div>
           <div class="stat-change">sve vrste dostupne</div>
         </div>
       </div>
@@ -977,7 +991,7 @@
         </div>
         <div class="card-body" style="padding:0">
           <table>
-            <thead><tr><th>Metal</th><th>Pocetno (kg)</th><th>Prodato (kg)</th><th>Dostupno (kg)</th><th>Status</th></tr></thead>
+            <thead><tr><th>Metal</th><th>Trenutno stanje</th><th>Status</th></tr></thead>
             <tbody id="lager-table"></tbody>
           </table>
         </div>
@@ -1032,14 +1046,14 @@
 <script>
 // ── STATE ────────────────────────────────────────────────────
 const CENOVNIK = { Bakar: 850, Aluminijum: 320, Celik: 95, Mesing: 580 };
-const POCETNO  = { Bakar: 5000, Aluminijum: 3000, Celik: 8000, Mesing: 2000 };
+const LAGER_KG = { Bakar: 5000, Aluminijum: 3000, Celik: 8000, Mesing: 2000 };
 
 // OVDE UBACI SVOJ WEB APP URL
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxcW1aVfqlfMP2TvDBYeTB5uEicM10ggm4G2M6kpxbPp1-6HxJucfun38wLhHfDGIL5/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwOAY1tZw36BRgXvDEhRjy5ELGfxJiHadxeXWUzuV3he6nPq6QU35p6NSmjbCb3CaEU/exec";
 
 let fakture = [];
 let otkupi = [];
-let lager = { Bakar: 0, Aluminijum: 0, Celik: 0, Mesing: 0 };
+// lager tracking now in LAGER_KG
 
 // ── NAVIGATION ───────────────────────────────────────────────
 function showPage(name) {
@@ -1156,11 +1170,10 @@ function processLocally(kupac, metal, kolicina, datum, tip) {
 
   if (isProdaja) {
     fakture.unshift(novaFaktura);
-    lager[metal] = (lager[metal] || 0) + kolicina;
+    LAGER_KG[metal] = (LAGER_KG[metal] || 0) - kolicina;
   } else {
     otkupi.unshift(novaFaktura);
-    // Otkup povecava pocetno stanje
-    POCETNO[metal] = (POCETNO[metal] || 0) + kolicina;
+    LAGER_KG[metal] = (LAGER_KG[metal] || 0) + kolicina;
   }
 
   // Generisi PDF
@@ -1247,43 +1260,38 @@ function renderFaktureTable() {
 function renderLager() {
   const grid = document.getElementById('lager-grid');
   const tbody = document.getElementById('lager-table');
-  const metals = Object.keys(POCETNO);
+  const metals = Object.keys(LAGER_KG);
 
   grid.innerHTML = metals.map(m => {
-    const prodato = lager[m] || 0;
-    const dostupno = POCETNO[m] - prodato;
-    const pct = Math.max(0, Math.min(100, (dostupno / POCETNO[m]) * 100));
-    const fillClass = pct > 50 ? 'fill-green' : pct > 20 ? 'fill-yellow' : 'fill-red';
-    const badge = pct > 50 ? 'badge-ok' : pct > 20 ? 'badge-warn' : 'badge-low';
-    const status = pct > 50 ? 'Dobro' : pct > 20 ? 'Nizak' : 'Kriticno';
+    const kg = LAGER_KG[m] || 0;
+    const badge = kg > 1000 ? 'badge-ok' : kg > 300 ? 'badge-warn' : 'badge-low';
+    const status = kg > 1000 ? 'Dobro' : kg > 300 ? 'Nizak' : 'Kriticno';
+    const barPct = Math.min(100, Math.max(4, (kg / 5000) * 100));
+    const fillClass = kg > 1000 ? 'fill-green' : kg > 300 ? 'fill-yellow' : 'fill-red';
     return `
       <div class="lager-card">
         <div class="lager-top">
           <div>
             <div class="lager-name">${m}</div>
-            <div class="lager-kg">${dostupno.toLocaleString()} kg dostupno</div>
+            <div class="lager-kg" style="font-size:18px;font-weight:800;color:var(--text)">${kg.toLocaleString()} kg</div>
           </div>
           <span class="badge ${badge}">${status}</span>
         </div>
-        <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
+        <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${barPct}%"></div></div>
         <div class="lager-meta">
-          <span>Prodato: ${prodato.toLocaleString()} kg</span>
-          <span>${Math.round(pct)}% dostupno</span>
+          <span>Trenutno stanje</span>
+          <span>${kg.toLocaleString()} kg dostupno</span>
         </div>
       </div>`;
   }).join('');
 
   tbody.innerHTML = metals.map(m => {
-    const prodato = lager[m] || 0;
-    const dostupno = POCETNO[m] - prodato;
-    const pct = (dostupno / POCETNO[m]) * 100;
-    const badge = pct > 50 ? 'badge-ok' : pct > 20 ? 'badge-warn' : 'badge-low';
-    const status = pct > 50 ? '● Dobro' : pct > 20 ? '● Nizak' : '● Kriticno';
+    const kg = LAGER_KG[m] || 0;
+    const badge = kg > 1000 ? 'badge-ok' : kg > 300 ? 'badge-warn' : 'badge-low';
+    const status = kg > 1000 ? '● Dobro' : kg > 300 ? '● Nizak' : '● Kriticno';
     return `<tr>
       <td class="td-primary">${m}</td>
-      <td style="font-family:var(--font-mono)">${POCETNO[m].toLocaleString()}</td>
-      <td style="font-family:var(--font-mono);color:var(--red)">${prodato.toLocaleString()}</td>
-      <td style="font-family:var(--font-mono);color:var(--green);font-weight:700">${dostupno.toLocaleString()}</td>
+      <td style="font-family:var(--font-mono);color:var(--green);font-weight:700;font-size:15px">${kg.toLocaleString()} kg</td>
       <td><span class="badge ${badge}">${status}</span></td>
     </tr>`;
   }).join('');
