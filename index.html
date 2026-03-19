@@ -3,941 +3,802 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MetalFlow — Sistem upravljanja</title>
-
-<style>
-  :root {
-    --bg: #0d0d0f;
-    --surface: #141416;
-    --surface2: #1c1c1f;
-    --border: #2a2a2e;
-    --accent: #e8c547;
-    --accent2: #c0392b;
-    --text: #f0ede8;
-    --text2: #888884;
-    --text3: #555552;
-    --green: #4caf79;
-    --red: #e05c4b;
-    --font-display: "Segoe UI", system-ui, sans-serif;
-    --font-mono: 'Consolas', 'Courier New', monospace;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font-display);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* ── NOISE OVERLAY ── */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 1000;
-    opacity: 0.4;
-  }
-
-  /* ── LAYOUT ── */
-  .app {
-    display: grid;
-    grid-template-columns: 260px 1fr;
-    grid-template-rows: 64px 1fr;
-    min-height: 100vh;
-  }
-
-  /* ── HEADER ── */
-  header {
-    grid-column: 1 / -1;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    padding: 0 28px;
-    gap: 16px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .logo-mark {
-    width: 32px;
-    height: 32px;
-    background: var(--accent);
-    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 800;
-    color: #000;
-    flex-shrink: 0;
-  }
-
-  .logo-text {
-    font-size: 18px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-    color: var(--text);
-  }
-
-  .logo-text span { color: var(--accent); }
-
-  .header-right {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-  }
-
-  .status-dot {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text2);
-  }
-
-  .dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--green);
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
-  /* ── SIDEBAR ── */
-  nav {
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    padding: 24px 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .nav-label {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text3);
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    padding: 0 20px;
-    margin: 12px 0 6px;
-  }
-
-  .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 20px;
-    cursor: pointer;
-    transition: all 0.15s;
-    border-left: 3px solid transparent;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text2);
-    user-select: none;
-  }
-
-  .nav-item:hover { color: var(--text); background: var(--surface2); }
-
-  .nav-item.active {
-    color: var(--accent);
-    border-left-color: var(--accent);
-    background: rgba(232, 197, 71, 0.06);
-  }
-
-  .nav-icon {
-    width: 18px;
-    height: 18px;
-    opacity: 0.7;
-    flex-shrink: 0;
-  }
-
-  .nav-item.active .nav-icon { opacity: 1; }
-
-  /* ── MAIN ── */
-  main {
-    padding: 32px;
-    overflow-y: auto;
-    max-height: calc(100vh - 64px);
-  }
-
-  /* ── PAGE SECTIONS ── */
-  .page { display: none; }
-  .page.active { display: block; animation: fadeIn 0.2s ease; }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* ── PAGE HEADER ── */
-  .page-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 32px;
-  }
-
-  .page-title {
-    font-size: 28px;
-    font-weight: 800;
-    letter-spacing: -1px;
-    line-height: 1.1;
-  }
-
-  .page-title span { color: var(--accent); }
-
-  .page-sub {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--text3);
-    margin-top: 6px;
-    letter-spacing: 0.3px;
-  }
-
-  /* ── STAT CARDS ── */
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 28px;
-  }
-
-  .stat-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-    position: relative;
-    overflow: hidden;
-    transition: border-color 0.2s;
-  }
-
-  .stat-card:hover { border-color: var(--text3); }
-
-  .stat-card::after {
-    content: '';
-    position: absolute;
-    top: 0; right: 0;
-    width: 60px; height: 60px;
-    background: radial-gradient(circle, rgba(232,197,71,0.08) 0%, transparent 70%);
-  }
-
-  .stat-label {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text3);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-  }
-
-  .stat-value {
-    font-size: 26px;
-    font-weight: 800;
-    letter-spacing: -1px;
-    color: var(--text);
-  }
-
-  .stat-value.up { color: var(--green); }
-  .stat-value.warn { color: var(--accent); }
-
-  .stat-change {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text3);
-    margin-top: 4px;
-  }
-
-  /* ── FORM CARD ── */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    overflow: hidden;
-  }
-
-  .card-header {
-    padding: 20px 24px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .card-title {
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: -0.3px;
-  }
-
-  .card-badge {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    padding: 3px 8px;
-    background: rgba(232,197,71,0.12);
-    color: var(--accent);
-    border-radius: 4px;
-    letter-spacing: 0.5px;
-  }
-
-  .card-body { padding: 24px; }
-
-  /* ── FORM ── */
-  .form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 20px;
-  }
-
-  .form-group { display: flex; flex-direction: column; gap: 8px; }
-  .form-group.full { grid-column: 1 / -1; }
-
-  label {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text2);
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
-  }
-
-  input, select {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px 14px;
-    color: var(--text);
-    font-family: var(--font-display);
-    font-size: 14px;
-    font-weight: 600;
-    outline: none;
-    transition: border-color 0.15s, box-shadow 0.15s;
-    width: 100%;
-    appearance: none;
-    -webkit-appearance: none;
-  }
-
-  input:focus, select:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(232,197,71,0.1);
-  }
-
-  input::placeholder { color: var(--text3); font-weight: 400; }
-
-  select option { background: var(--surface2); }
-
-  /* ── BUTTON ── */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 14px 28px;
-    border-radius: 10px;
-    font-family: var(--font-display);
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    border: none;
-    outline: none;
-    transition: all 0.15s;
-    letter-spacing: -0.2px;
-  }
-
-  .btn-primary {
-    background: var(--accent);
-    color: #000;
-    width: 100%;
-  }
-
-  .btn-primary:hover {
-    background: #f0d060;
-    transform: translateY(-1px);
-    box-shadow: 0 8px 24px rgba(232,197,71,0.25);
-  }
-
-  .btn-primary:active { transform: translateY(0); }
-
-  .btn-primary.loading {
-    opacity: 0.7;
-    pointer-events: none;
-  }
-
-  /* ── TABLE ── */
-  .table-wrap {
-    overflow-x: auto;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-
-  thead tr {
-    border-bottom: 1px solid var(--border);
-  }
-
-  th {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text3);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    padding: 10px 14px;
-    text-align: left;
-    font-weight: 400;
-  }
-
-  td {
-    padding: 13px 14px;
-    border-bottom: 1px solid rgba(42,42,46,0.5);
-    color: var(--text2);
-    font-weight: 500;
-  }
-
-  tr:last-child td { border-bottom: none; }
-
-  tr:hover td { background: rgba(255,255,255,0.015); color: var(--text); }
-
-  .td-primary {
-    color: var(--text) !important;
-    font-weight: 700 !important;
-    font-family: var(--font-mono);
-  }
-
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 500;
-  }
-
-  .badge-metal {
-    background: rgba(232,197,71,0.1);
-    color: var(--accent);
-  }
-
-  .badge-ok { background: rgba(76,175,121,0.1); color: var(--green); }
-  .badge-warn { background: rgba(232,197,71,0.1); color: var(--accent); }
-  .badge-low { background: rgba(224,92,75,0.1); color: var(--red); }
-
-  /* ── LAGER BARS ── */
-  .lager-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-
-  .lager-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-    transition: border-color 0.2s;
-  }
-
-  .lager-card:hover { border-color: var(--text3); }
-
-  .lager-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 14px;
-  }
-
-  .lager-name {
-    font-size: 16px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-  }
-
-  .lager-kg {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text2);
-    margin-top: 2px;
-  }
-
-  .progress-bar {
-    height: 6px;
-    background: var(--surface2);
-    border-radius: 3px;
-    overflow: hidden;
-    margin-bottom: 8px;
-  }
-
-  .progress-fill {
-    height: 100%;
-    border-radius: 3px;
-    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .fill-green { background: var(--green); }
-  .fill-yellow { background: var(--accent); }
-  .fill-red { background: var(--red); }
-
-  .lager-meta {
-    display: flex;
-    justify-content: space-between;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text3);
-  }
-
-  /* ── TOAST ── */
-  .toast {
-    position: fixed;
-    bottom: 28px;
-    right: 28px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px 20px;
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    max-width: 340px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-    transform: translateY(100px);
-    opacity: 0;
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    z-index: 999;
-  }
-
-  .toast.show { transform: translateY(0); opacity: 1; }
-
-  .toast-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    flex-shrink: 0;
-  }
-
-  .toast-icon.success { background: rgba(76,175,121,0.15); }
-  .toast-icon.error { background: rgba(224,92,75,0.15); }
-
-  .toast-title {
-    font-size: 13px;
-    font-weight: 700;
-    margin-bottom: 3px;
-  }
-
-  .toast-msg {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text2);
-    line-height: 1.5;
-  }
-
-  /* ── EMPTY STATE ── */
-  .empty {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--text3);
-  }
-
-  .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
-  .empty-text { font-family: var(--font-mono); font-size: 12px; }
-
-  /* ── TICKER ── */
-  .ticker {
-    background: var(--surface2);
-    border-bottom: 1px solid var(--border);
-    grid-column: 1 / -1;
-    padding: 8px 28px;
-    display: flex;
-    gap: 32px;
-    overflow: hidden;
-    font-family: var(--font-mono);
-    font-size: 11px;
-  }
-
-  .ticker-item { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
-  .ticker-name { color: var(--text3); }
-  .ticker-price { color: var(--text); font-weight: 500; }
-  .ticker-change { color: var(--green); }
-
-  /* ── SCROLLBAR ── */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-  /* ── TWO COL LAYOUT ── */
-  .two-col {
-    display: grid;
-    grid-template-columns: 1fr 1.2fr;
-    gap: 20px;
-    align-items: start;
-  }
-
-
-  /* ── HAMBURGER ── */
-  .hamburger {
-    display: none;
-    flex-direction: column;
-    gap: 5px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 4px;
-  }
-  .hamburger span {
-    display: block;
-    width: 22px;
-    height: 2px;
-    background: var(--text);
-    border-radius: 2px;
-    transition: all 0.3s;
-  }
-  .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
-  .hamburger.open span:nth-child(2) { opacity: 0; }
-  .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
-
-  /* ── OVERLAY ── */
-  .nav-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.6);
-    z-index: 90;
-  }
-  .nav-overlay.show { display: block; }
-
-  /* ── RESPONSIVE ── */
-  @media (max-width: 768px) {
-
-    .hamburger { display: flex; }
-
-    .app {
-      grid-template-columns: 1fr;
-      grid-template-rows: 64px 1fr;
-    }
-
-    nav {
-      position: fixed;
-      top: 64px;
-      left: -280px;
-      width: 260px;
-      height: calc(100vh - 64px);
-      z-index: 95;
-      transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      overflow-y: auto;
-    }
-
-    nav.open { left: 0; }
-
-    main {
-      grid-column: 1;
-      padding: 20px 16px;
-      max-height: calc(100vh - 64px);
-    }
-
-    .stats-grid {
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    .two-col {
-      grid-template-columns: 1fr;
-    }
-
-    .lager-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .form-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .form-group.full { grid-column: 1; }
-
-    .page-title { font-size: 22px; }
-
-    .stat-value { font-size: 20px; }
-
-    table { font-size: 12px; }
-    th, td { padding: 10px 10px; }
-
-    .logo-text { font-size: 16px; }
-
-    .status-dot span { display: none; }
-
-    #clock { display: none; }
-
-    .card-header { padding: 16px 16px; }
-    .card-body { padding: 16px !important; }
-  }
-
-  @media (max-width: 400px) {
-    .stats-grid { grid-template-columns: 1fr; }
-    main { padding: 16px 12px; }
-  }
-
-
-  @media (max-width: 768px) {
-    .two-col { grid-template-columns: 1fr !important; }
-    .lager-grid { grid-template-columns: 1fr !important; }
-    .stats-grid { grid-template-columns: 1fr 1fr !important; }
-    .form-grid { grid-template-columns: 1fr !important; }
-    .form-group.full { grid-column: 1 !important; }
-    .page-title { font-size: 20px !important; }
-    .table-wrap { overflow-x: auto; }
-    table { min-width: 480px; }
-  }
-  @media (max-width: 400px) {
-    .stats-grid { grid-template-columns: 1fr !important; }
-  }
-</style>
+<title>Jungic Recycling</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0a0a0a;
+  --surface: #111111;
+  --surface2: #1a1a1a;
+  --border: #222222;
+  --border2: #2a2a2a;
+  --green: #4caf79;
+  --green-dim: rgba(76,175,121,0.12);
+  --green-border: rgba(76,175,121,0.3);
+  --red: #e05c3a;
+  --red-dim: rgba(224,92,58,0.12);
+  --text: #f0f0f0;
+  --text2: #888888;
+  --text3: #444444;
+  --font: 'Courier New', monospace;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  width: 34px;
+  height: 34px;
+  background: var(--green);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 900;
+  color: #000;
+  flex-shrink: 0;
+}
+
+.logo-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.logo-sub {
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.live-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text2);
+  letter-spacing: 1px;
+}
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: blink 2s infinite;
+}
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+#clock {
+  font-size: 11px;
+  color: var(--text3);
+}
+
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.hamburger span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 1px;
+  transition: all 0.25s;
+}
+
+.hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.hamburger.open span:nth-child(2) { opacity: 0; }
+.hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* ── LAYOUT ── */
+.app {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: calc(100vh - 60px);
+}
+
+/* ── NAV ── */
+nav {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 20px 0;
+}
+
+.nav-section {
+  font-size: 9px;
+  color: var(--text3);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 0 18px;
+  margin: 16px 0 6px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text2);
+  letter-spacing: 0.5px;
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+  user-select: none;
+  text-transform: uppercase;
+}
+
+.nav-item:hover { color: var(--text); background: var(--surface2); }
+
+.nav-item.active {
+  color: var(--green);
+  border-left-color: var(--green);
+  background: var(--green-dim);
+}
+
+.nav-icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+
+/* ── MAIN ── */
+main {
+  padding: 28px;
+  overflow-y: auto;
+  max-height: calc(100vh - 60px);
+}
+
+/* ── PAGES ── */
+.page { display: none; }
+.page.active { display: block; animation: fadeUp 0.2s ease; }
+
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(6px); }
+  to { opacity:1; transform:translateY(0); }
+}
+
+/* ── PAGE HEADER ── */
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.page-title span { color: var(--green); }
+
+.page-sub {
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 1.5px;
+  margin-bottom: 24px;
+}
+
+/* ── LOADING ── */
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 16px;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-text {
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* ── STATS ── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.stat-label {
+  font-size: 9px;
+  color: var(--text3);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.stat-val {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stat-val.green { color: var(--green); }
+.stat-val.red { color: var(--red); }
+
+.stat-sub {
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 4px;
+}
+
+/* ── CARD ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.card-head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-title {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+
+.card-badge {
+  font-size: 9px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.badge-green { background: var(--green-dim); color: var(--green); border: 1px solid var(--green-border); }
+.badge-red { background: var(--red-dim); color: var(--red); }
+
+/* ── TABLE ── */
+.table-wrap { overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+
+th {
+  font-size: 9px;
+  color: var(--text3);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+}
+
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); color: var(--text); }
+
+.td-main { color: var(--text) !important; font-weight: 700; }
+.td-green { color: var(--green) !important; font-weight: 700; }
+.td-red { color: var(--red) !important; font-weight: 700; }
+
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+/* ── LAGER CARDS ── */
+.lager-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.lager-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px;
+  transition: border-color 0.2s;
+}
+
+.lager-card:hover { border-color: var(--border2); }
+
+.lager-metal {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text2);
+  margin-bottom: 8px;
+}
+
+.lager-kg {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--green);
+  margin-bottom: 4px;
+}
+
+.lager-unit {
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 1px;
+}
+
+.lager-bar {
+  height: 3px;
+  background: var(--border2);
+  border-radius: 2px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.lager-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.lager-fill.warn { background: #f0a500; }
+.lager-fill.danger { background: var(--red); }
+
+/* ── FORM ── */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 18px;
+}
+
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group.full { grid-column: 1/-1; }
+
+.form-label {
+  font-size: 9px;
+  color: var(--text3);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+input, select {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  -webkit-appearance: none;
+}
+
+input:focus, select:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px rgba(76,175,121,0.1);
+}
+
+input::placeholder { color: var(--text3); }
+select option { background: var(--surface2); }
+
+/* ── TIP TOGGLE ── */
+.tip-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.tip-btn {
+  padding: 10px;
+  text-align: center;
+  font-family: var(--font);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  background: var(--surface2);
+  color: var(--text3);
+  transition: all 0.15s;
+}
+
+.tip-btn.active-prodaja {
+  background: var(--red-dim);
+  color: var(--red);
+}
+
+.tip-btn.active-otkup {
+  background: var(--green-dim);
+  color: var(--green);
+}
+
+/* ── PREVIEW ── */
+.preview-box {
+  display: none;
+  margin: 0 18px 0;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 14px;
+}
+
+.preview-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  font-size: 12px;
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+}
+
+.preview-row:last-child {
+  border-bottom: none;
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+.preview-row.total { color: var(--text); font-size: 14px; font-weight: 700; }
+.preview-val { color: var(--text); }
+
+/* ── BTN ── */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+  width: 100%;
+  margin: 14px 18px 18px;
+  width: calc(100% - 36px);
+}
+
+.btn-prodaja { background: var(--red); color: #fff; }
+.btn-prodaja:hover { background: #f06d4a; }
+.btn-otkup { background: var(--green); color: #000; }
+.btn-otkup:hover { background: #5dc98a; }
+.btn:disabled { opacity: 0.5; pointer-events: none; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 14px 18px;
+  max-width: 320px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+  transform: translateY(120px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  z-index: 999;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast-icon { font-size: 18px; flex-shrink: 0; }
+.toast-title { font-size: 12px; font-weight: 700; margin-bottom: 3px; letter-spacing: 0.5px; }
+.toast-msg { font-size: 11px; color: var(--text2); line-height: 1.5; }
+
+/* ── EMPTY ── */
+.empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text3);
+}
+
+.empty-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.3; }
+.empty-text { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+
+/* ── OVERLAY ── */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 90;
+}
+
+.overlay.show { display: block; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .hamburger { display: flex; }
+
+  .app { grid-template-columns: 1fr; }
+
+  nav {
+    position: fixed;
+    top: 60px;
+    left: -240px;
+    width: 220px;
+    height: calc(100vh - 60px);
+    z-index: 95;
+    transition: left 0.25s ease;
+    overflow-y: auto;
+  }
+
+  nav.open { left: 0; }
+
+  main { padding: 16px; max-height: calc(100vh - 60px); }
+
+  .stats-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .lager-grid { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .form-group.full { grid-column: 1; }
+  .page-title { font-size: 16px; }
+  .lager-kg { font-size: 22px; }
+  #clock { display: none; }
+  .live-badge span { display: none; }
+}
+
+@media (max-width: 400px) {
+  .stats-row { grid-template-columns: 1fr; }
+}
+</style>
 </head>
 <body>
 
-<div class="nav-overlay" id="nav-overlay" onclick="toggleNav()"></div>
+<div class="overlay" id="overlay" onclick="closeNav()"></div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">JR</div>
+    <div>
+      <div class="logo-name">Jungic Recycling</div>
+      <div class="logo-sub">Sistem upravljanja</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      <span>Live</span>
+    </div>
+    <div id="clock"></div>
+    <button class="hamburger" id="hamburger" onclick="toggleNav()">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
 <div class="app">
 
-  <!-- HEADER -->
-  <header>
-    <div class="logo">
-      <div class="logo-mark">M</div>
-      <div class="logo-text">Metal<span>Flow</span></div>
+  <nav id="nav">
+    <div class="nav-section">Pregled</div>
+    <div class="nav-item active" onclick="showPage('dashboard', this)">
+      <span class="nav-icon">▦</span> Dashboard
     </div>
-    <div class="header-right">
-      <div class="status-dot">
-        <div class="dot"></div>
-        <span>Sistem aktivan</span>
-      </div>
-      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3)" id="clock"></div>
-      <button class="hamburger" id="hamburger" onclick="toggleNav()" aria-label="Meni">
-        <span></span><span></span><span></span>
-      </button>
+    <div class="nav-item" onclick="showPage('lager', this)">
+      <span class="nav-icon">◈</span> Lager
     </div>
-  </header>
 
-  <!-- SIDEBAR -->
-  <nav>
-    <div class="nav-label">Navigacija</div>
-    <div class="nav-item active" onclick="showPage('dashboard')">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-      Pregled
+    <div class="nav-section">Transakcije</div>
+    <div class="nav-item" onclick="showPage('transakcija', this)">
+      <span class="nav-icon">+</span> Nova transakcija
     </div>
-    <div class="nav-item" onclick="showPage('unos')">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-      Nova transakcija
+    <div class="nav-item" onclick="showPage('fakture', this)">
+      <span class="nav-icon">▤</span> Fakture
     </div>
-    <div class="nav-item" onclick="showPage('fakture')">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      Fakture
-    </div>
-    <div class="nav-item" onclick="showPage('lager')">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-      Lager
-    </div>
-    <div class="nav-item" onclick="showPage('otkup')">
-      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-      Otkup
+    <div class="nav-item" onclick="showPage('otkup', this)">
+      <span class="nav-icon">▣</span> Otkup
     </div>
   </nav>
 
-  <!-- MAIN -->
   <main>
 
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Dobro jutro, <span>Petar</span></div>
-          <div class="page-sub">// pregled sistema — danas</div>
-        </div>
-      </div>
+      <div class="page-title">Jungic <span>Recycling</span></div>
+      <div class="page-sub">// pregled sistema u realnom vremenu</div>
 
-      <div class="stats-grid">
+      <div class="stats-row">
         <div class="stat-card">
-          <div class="stat-label">Fakture danas</div>
-          <div class="stat-value up" id="stat-fakture">0</div>
-          <div class="stat-change">transakcija</div>
+          <div class="stat-label">Fakture ukupno</div>
+          <div class="stat-val green" id="s-fakture">—</div>
+          <div class="stat-sub">transakcija</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Promet danas</div>
-          <div class="stat-value" id="stat-promet">0 RSD</div>
-          <div class="stat-change">ukupna vrednost</div>
+          <div class="stat-label">Otkup ukupno</div>
+          <div class="stat-val green" id="s-otkup">—</div>
+          <div class="stat-sub">transakcija</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Kg obradjeno</div>
-          <div class="stat-value warn" id="stat-kg">0 kg</div>
-          <div class="stat-change">ukupno</div>
+          <div class="stat-label">Promet prodaja</div>
+          <div class="stat-val" id="s-promet">—</div>
+          <div class="stat-sub">RSD ukupno</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Status lagera</div>
-          <div class="stat-value up" id="stat-lager-status">OK</div>
-          <div class="stat-change">sve vrste dostupne</div>
+          <div class="stat-label">Promet otkup</div>
+          <div class="stat-val" id="s-promet-otkup">—</div>
+          <div class="stat-sub">RSD ukupno</div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-header">
+        <div class="card-head">
           <div class="card-title">Poslednje transakcije</div>
-          <div class="card-badge">LIVE</div>
+          <div class="card-badge badge-green">LIVE</div>
         </div>
-        <div class="card-body" style="padding:0">
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Datum</th>
-                  <th>Kupac</th>
-                  <th>Metal</th>
-                  <th>Kolicina</th>
-                  <th>Ukupno</th>
-                </tr>
-              </thead>
-              <tbody id="dashboard-table">
-                <tr><td colspan="6"><div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Nema transakcija — dodaj prvu</div></div></td></tr>
-              </tbody>
-            </table>
-          </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tip</th><th>#</th><th>Datum</th><th>Stranka</th><th>Metal</th><th>Kg</th><th>Ukupno</th></tr></thead>
+            <tbody id="t-dashboard"></tbody>
+          </table>
         </div>
       </div>
     </div>
 
-    <!-- UNOS -->
-    <div class="page" id="page-unos">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Nova <span>transakcija</span></div>
-          <div class="page-sub">// unesi podatke — faktura se generiše automatski</div>
+    <!-- LAGER -->
+    <div class="page" id="page-lager">
+      <div class="page-title">Stanje <span>lagera</span></div>
+      <div class="page-sub">// azurira se automatski</div>
+      <div class="lager-grid" id="lager-grid"></div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Detalji</div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Metal</th><th>Kolicina</th><th>Cena/kg</th><th>Vrednost</th></tr></thead>
+            <tbody id="t-lager"></tbody>
+          </table>
         </div>
       </div>
+    </div>
 
-      <div class="two-col">
+    <!-- TRANSAKCIJA -->
+    <div class="page" id="page-transakcija">
+      <div class="page-title">Nova <span>transakcija</span></div>
+      <div class="page-sub">// prodaja ili otkup metala</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:16px;align-items:start" id="trans-grid">
         <div class="card">
-          <div class="card-header">
-            <div class="card-title">Podaci o transakciji</div>
-          </div>
-          <div class="card-body">
-            <div class="form-grid">
-              <div class="form-group full">
-                <label id="kupac-label">Naziv kupca</label>
-                <input type="text" id="f-kupac" placeholder="npr. ABC Metal doo" />
-              </div>
-              <div class="form-group">
-                <label>Tip transakcije</label>
-                <select id="f-tip" onchange="updateTipUI()">
-                  <option value="prodaja">Prodaja</option>
-                  <option value="otkup">Otkup</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Vrsta metala</label>
-                <select id="f-metal">
-                  <option value="">Izaberi metal</option>
-                  <option value="Bakar">Bakar</option>
-                  <option value="Aluminijum">Aluminijum</option>
-                  <option value="Celik">Celik</option>
-                  <option value="Mesing">Mesing</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Kolicina (kg)</label>
-                <input type="number" id="f-kolicina" placeholder="0" min="1" />
-              </div>
-              <div class="form-group full">
-                <label>Datum</label>
-                <input type="date" id="f-datum" />
+          <div class="card-head"><div class="card-title" id="form-card-title">Podaci</div></div>
+
+          <div class="form-grid">
+            <div class="form-group full">
+              <div class="form-label">Tip transakcije</div>
+              <div class="tip-toggle">
+                <button class="tip-btn active-prodaja" id="btn-prodaja" onclick="setTip('prodaja')">▼ Prodaja</button>
+                <button class="tip-btn" id="btn-otkup" onclick="setTip('otkup')">▲ Otkup</button>
               </div>
             </div>
-
-            <!-- PREVIEW -->
-            <div id="preview-box" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;">
-              <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px;margin-bottom:10px;">PREGLED FAKTURE</div>
-              <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-                <span style="font-size:13px;color:var(--text2)">Metal</span>
-                <span style="font-family:var(--font-mono);font-size:13px;color:var(--text)" id="prev-metal">—</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-                <span style="font-size:13px;color:var(--text2)">Kolicina</span>
-                <span style="font-family:var(--font-mono);font-size:13px;color:var(--text)" id="prev-kg">—</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-                <span style="font-size:13px;color:var(--text2)">Cena/kg</span>
-                <span style="font-family:var(--font-mono);font-size:13px;color:var(--text)" id="prev-cena">—</span>
-              </div>
-              <div style="height:1px;background:var(--border);margin:10px 0;"></div>
-              <div style="display:flex;justify-content:space-between;">
-                <span style="font-size:14px;font-weight:700;">UKUPNO</span>
-                <span style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--accent)" id="prev-ukupno">—</span>
-              </div>
+            <div class="form-group full">
+              <div class="form-label" id="stranka-label">Naziv kupca</div>
+              <input type="text" id="f-stranka" placeholder="npr. ABC Metal doo" />
             </div>
-
-            <button class="btn btn-primary" id="submit-btn" onclick="submitForm()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
-              <span id="submit-label">Generisi fakturu</span>
-            </button>
+            <div class="form-group">
+              <div class="form-label">Metal</div>
+              <select id="f-metal" onchange="updatePreview()">
+                <option value="">Izaberi...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <div class="form-label">Kolicina (kg)</div>
+              <input type="number" id="f-kg" placeholder="0" min="1" oninput="updatePreview()" />
+            </div>
+            <div class="form-group full">
+              <div class="form-label">Datum</div>
+              <input type="date" id="f-datum" />
+            </div>
           </div>
+
+          <div class="preview-box" id="preview">
+            <div class="preview-row">
+              <span>Metal</span><span class="preview-val" id="prev-metal">—</span>
+            </div>
+            <div class="preview-row">
+              <span>Kolicina</span><span class="preview-val" id="prev-kg">—</span>
+            </div>
+            <div class="preview-row">
+              <span>Cena/kg</span><span class="preview-val" id="prev-cena">—</span>
+            </div>
+            <div class="preview-row total">
+              <span>UKUPNO</span><span id="prev-ukupno">—</span>
+            </div>
+          </div>
+
+          <button class="btn btn-prodaja" id="submit-btn" onclick="submitTransakcija()">
+            ▼ Generisi fakturu
+          </button>
         </div>
 
-        <!-- CENOVNIK SIDEBAR -->
         <div class="card">
-          <div class="card-header">
-            <div class="card-title">Cenovnik metala</div>
-            <div class="card-badge">DANAS</div>
-          </div>
-          <div class="card-body" style="padding:0">
+          <div class="card-head"><div class="card-title">Cenovnik</div><div class="card-badge badge-green">Danas</div></div>
+          <div class="table-wrap">
             <table>
-              <thead><tr><th>Metal</th><th>Cena/kg</th><th>Status</th></tr></thead>
-              <tbody>
-                <tr>
-                  <td class="td-primary">Bakar</td>
-                  <td style="font-family:var(--font-mono);color:var(--text)">850 RSD</td>
-                  <td><span class="badge badge-ok">● Dostupan</span></td>
-                </tr>
-                <tr>
-                  <td class="td-primary">Aluminijum</td>
-                  <td style="font-family:var(--font-mono);color:var(--text)">320 RSD</td>
-                  <td><span class="badge badge-ok">● Dostupan</span></td>
-                </tr>
-                <tr>
-                  <td class="td-primary">Celik</td>
-                  <td style="font-family:var(--font-mono);color:var(--text)">95 RSD</td>
-                  <td><span class="badge badge-ok">● Dostupan</span></td>
-                </tr>
-                <tr>
-                  <td class="td-primary">Mesing</td>
-                  <td style="font-family:var(--font-mono);color:var(--text)">580 RSD</td>
-                  <td><span class="badge badge-ok">● Dostupan</span></td>
-                </tr>
-              </tbody>
+              <thead><tr><th>Metal</th><th>Cena/kg</th></tr></thead>
+              <tbody id="t-cenovnik"></tbody>
             </table>
           </div>
         </div>
@@ -946,87 +807,28 @@
 
     <!-- FAKTURE -->
     <div class="page" id="page-fakture">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Sve <span>fakture</span></div>
-          <div class="page-sub">// istorija transakcija</div>
-        </div>
-      </div>
+      <div class="page-title">Sve <span>fakture</span></div>
+      <div class="page-sub">// istorija prodaje</div>
       <div class="card">
-        <div class="card-body" style="padding:0">
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Datum</th>
-                  <th>Kupac</th>
-                  <th>Metal</th>
-                  <th>Kolicina</th>
-                  <th>Cena/kg</th>
-                  <th>Ukupno</th>
-                </tr>
-              </thead>
-              <tbody id="fakture-table">
-                <tr><td colspan="7"><div class="empty"><div class="empty-icon">📄</div><div class="empty-text">Nema faktura jos — dodaj prvu transakciju</div></div></td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- LAGER -->
-    <div class="page" id="page-lager">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Stanje <span>lagera</span></div>
-          <div class="page-sub">// azurira se automatski pri svakoj transakciji</div>
-        </div>
-      </div>
-      <div class="lager-grid" id="lager-grid"></div>
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Detaljna tabela</div>
-        </div>
-        <div class="card-body" style="padding:0">
+        <div class="table-wrap">
           <table>
-            <thead><tr><th>Metal</th><th>Trenutno stanje</th><th>Status</th></tr></thead>
-            <tbody id="lager-table"></tbody>
+            <thead><tr><th>#</th><th>Datum</th><th>Kupac</th><th>Metal</th><th>Kg</th><th>Cena/kg</th><th>Ukupno</th><th></th></tr></thead>
+            <tbody id="t-fakture"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-
     <!-- OTKUP -->
     <div class="page" id="page-otkup">
-      <div class="page-header">
-        <div>
-          <div class="page-title">Istorija <span style="color:var(--green)">otkupa</span></div>
-          <div class="page-sub">// svi otkupljeni metali</div>
-        </div>
-      </div>
+      <div class="page-title">Istorija <span>otkupa</span></div>
+      <div class="page-sub">// kupovina metala</div>
       <div class="card">
-        <div class="card-body" style="padding:0">
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Datum</th>
-                  <th>Dobavljac</th>
-                  <th>Metal</th>
-                  <th>Kolicina</th>
-                  <th>Cena/kg</th>
-                  <th>Ukupno</th>
-                </tr>
-              </thead>
-              <tbody id="otkup-table">
-                <tr><td colspan="7"><div class="empty"><div class="empty-icon">📦</div><div class="empty-text">Nema otkupa jos — dodaj prvi</div></div></td></tr>
-              </tbody>
-            </table>
-          </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Datum</th><th>Dobavljac</th><th>Metal</th><th>Kg</th><th>Cena/kg</th><th>Ukupno</th><th></th></tr></thead>
+            <tbody id="t-otkup"></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1034,370 +836,437 @@
   </main>
 </div>
 
-<!-- TOAST -->
 <div class="toast" id="toast">
-  <div class="toast-icon success" id="toast-icon">✓</div>
+  <div class="toast-icon" id="toast-icon">✓</div>
   <div>
-    <div class="toast-title" id="toast-title">Faktura kreirana</div>
+    <div class="toast-title" id="toast-title"></div>
     <div class="toast-msg" id="toast-msg"></div>
   </div>
 </div>
 
+<iframe name="hidden_iframe" style="display:none"></iframe>
+
 <script>
-// ── STATE ────────────────────────────────────────────────────
-const CENOVNIK = { Bakar: 850, Aluminijum: 320, Celik: 95, Mesing: 580 };
-const LAGER_KG = { Bakar: 5000, Aluminijum: 3000, Celik: 8000, Mesing: 2000 };
+const API = "https://script.google.com/macros/s/AKfycbwLuSboyzyFXOV3DunWBwhv5kQxYFXJAUG1l2lDLSC7kyZW7P7dgHnawFy9sY-rvKRK/exec";
 
-// OVDE UBACI SVOJ WEB APP URL
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwOAY1tZw36BRgXvDEhRjy5ELGfxJiHadxeXWUzuV3he6nPq6QU35p6NSmjbCb3CaEU/exec";
+let STATE = { lager: [], fakture: [], otkup: [], cenovnik: [] };
+let currentTip = 'prodaja';
 
-let fakture = [];
-let otkupi = [];
-// lager tracking now in LAGER_KG
-
-// ── NAVIGATION ───────────────────────────────────────────────
-function showPage(name) {
-  // Close mobile nav
-  const nav = document.querySelector('nav');
-  const btn = document.getElementById('hamburger');
-  const overlay = document.getElementById('nav-overlay');
-  if (nav) nav.classList.remove('open');
-  if (btn) btn.classList.remove('open');
-  if (overlay) overlay.classList.remove('show');
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
-  event.currentTarget.classList.add('active');
-  if (name === 'lager') renderLager();
-  if (name === 'fakture') renderFaktureTable();
-  if (name === 'otkup') renderOtkupTable();
-  if (name === 'dashboard') renderDashboard();
-}
-
-// ── CLOCK ────────────────────────────────────────────────────
-
-function toggleNav() {
-  const nav = document.querySelector('nav');
-  const btn = document.getElementById('hamburger');
-  const overlay = document.getElementById('nav-overlay');
-  nav.classList.toggle('open');
-  btn.classList.toggle('open');
-  overlay.classList.toggle('show');
-}
-
-// Close nav when page is selected on mobile
-const origShowPage = showPage;
-
-function updateClock() {
-  const now = new Date();
-  document.getElementById('clock').textContent =
-    now.toLocaleTimeString('sr', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}
-setInterval(updateClock, 1000);
-updateClock();
-
-// ── PREVIEW ──────────────────────────────────────────────────
-document.getElementById('f-metal').addEventListener('change', updatePreview);
-document.getElementById('f-kolicina').addEventListener('input', updatePreview);
-
-function updatePreview() {
-  const metal = document.getElementById('f-metal').value;
-  const kg = parseFloat(document.getElementById('f-kolicina').value);
-  const box = document.getElementById('preview-box');
-  if (!metal || !kg) { box.style.display = 'none'; return; }
-  const cena = CENOVNIK[metal];
-  const ukupno = cena * kg;
-  box.style.display = 'block';
-  document.getElementById('prev-metal').textContent = metal;
-  document.getElementById('prev-kg').textContent = kg.toLocaleString() + ' kg';
-  document.getElementById('prev-cena').textContent = cena.toLocaleString() + ' RSD';
-  document.getElementById('prev-ukupno').textContent = ukupno.toLocaleString() + ' RSD';
-}
-
-// ── SUBMIT ───────────────────────────────────────────────────
-function updateTipUI() {
-  const tip = document.getElementById('f-tip').value;
-  const isProdaja = tip === 'prodaja';
-  document.getElementById('kupac-label').textContent = isProdaja ? 'Naziv kupca' : 'Naziv dobavljaca';
-  document.getElementById('f-kupac').placeholder = isProdaja ? 'npr. ABC Metal doo' : 'npr. Dobavljac doo';
-  document.getElementById('submit-label').textContent = isProdaja ? 'Generisi fakturu' : 'Evidentiraj otkup';
-  const btn = document.getElementById('submit-btn');
-  btn.style.background = isProdaja ? 'var(--accent)' : 'var(--green)';
-}
-
-function submitForm() {
-  const kupac    = document.getElementById('f-kupac').value.trim();
-  const metal    = document.getElementById('f-metal').value;
-  const kolicina = parseFloat(document.getElementById('f-kolicina').value);
-  const datum    = document.getElementById('f-datum').value;
-  const tip      = document.getElementById('f-tip').value;
-
-  if (!kupac || !metal || !kolicina || !datum) {
-    showToast('error', 'Greska', 'Popuni sva polja pre generisanja fakture.');
-    return;
+// ── LOAD DATA ─────────────────────────────────────────────
+async function loadData() {
+  try {
+    const res = await fetch(API + '?action=getData');
+    const data = await res.json();
+    if (data.status === 'ok') {
+      STATE = data;
+      renderAll();
+    }
+  } catch(e) {
+    showToast('error', 'Greska', 'Nije moguce ucitati podatke.');
   }
-
-  const btn = document.getElementById('submit-btn');
-  btn.classList.add('loading');
-  btn.textContent = 'Saljem...';
-
-  // Salje na Google Sheets preko forme
-  const form = document.createElement('form');
-  form.method = 'GET';
-  form.action = WEB_APP_URL;
-  form.target = 'hidden_iframe';
-  const fields = { kupac, metal, kolicina, datum, tip };
-  for (const [k, v] of Object.entries(fields)) {
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = k;
-    input.value = v;
-    form.appendChild(input);
-  }
-  document.body.appendChild(form);
-  form.submit();
-  document.body.removeChild(form);
-  setTimeout(() => processLocally(kupac, metal, kolicina, datum, tip), 1500);
 }
 
-function processLocally(kupac, metal, kolicina, datum, tip) {
-  const cena   = CENOVNIK[metal];
-  const ukupno = cena * kolicina;
-  const isProdaja = tip !== 'otkup';
-  const br     = isProdaja ? (fakture.length + 1) : (otkupi.length + 1);
-
-  const novaFaktura = { br, datum, kupac, metal, kolicina, cena, ukupno, tip };
-
-  if (isProdaja) {
-    fakture.unshift(novaFaktura);
-    LAGER_KG[metal] = (LAGER_KG[metal] || 0) - kolicina;
-  } else {
-    otkupi.unshift(novaFaktura);
-    LAGER_KG[metal] = (LAGER_KG[metal] || 0) + kolicina;
-  }
-
-  // Generisi PDF
-  setTimeout(() => generisiPDF(novaFaktura), 500);
-
-  // Reset forme
-  document.getElementById('f-kupac').value    = '';
-  document.getElementById('f-metal').value    = '';
-  document.getElementById('f-kolicina').value = '';
-  document.getElementById('f-datum').value    = '';
-  document.getElementById('preview-box').style.display = 'none';
-
-  const btn = document.getElementById('submit-btn');
-  btn.classList.remove('loading');
-  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg> Generisi fakturu';
-
-  showToast('success', 'Faktura #' + br + ' kreirana',
-    kupac + ' · ' + kolicina.toLocaleString() + ' kg ' + metal + ' · ' + ukupno.toLocaleString() + ' RSD');
-
+function renderAll() {
   renderDashboard();
+  renderLager();
+  renderFakture();
+  renderOtkup();
+  renderCenovnik();
 }
 
-// ── RENDER ───────────────────────────────────────────────────
+// ── DASHBOARD ─────────────────────────────────────────────
 function renderDashboard() {
-  const tbody = document.getElementById('dashboard-table');
-  if (fakture.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Nema transakcija — dodaj prvu</div></div></td></tr>';
-  } else {
-    tbody.innerHTML = fakture.slice(0,8).map(f => `
-      <tr>
-        <td class="td-primary">#${f.br}</td>
-        <td>${f.datum}</td>
-        <td style="color:var(--text);font-weight:600">${f.kupac}</td>
-        <td><span class="badge badge-metal">${f.metal}</span></td>
-        <td style="font-family:var(--font-mono)">${f.kolicina.toLocaleString()} kg</td>
-        <td style="font-family:var(--font-mono);color:var(--accent);font-weight:700">${f.ukupno.toLocaleString()} RSD</td>
-      </tr>`).join('');
-  }
+  document.getElementById('s-fakture').textContent = STATE.fakture.length;
+  document.getElementById('s-otkup').textContent = STATE.otkup.length;
 
-  const total = fakture.reduce((s,f) => s + f.ukupno, 0);
-  const totalKg = fakture.reduce((s,f) => s + f.kolicina, 0);
-  document.getElementById('stat-fakture').textContent = fakture.length;
-  document.getElementById('stat-promet').textContent = total.toLocaleString() + ' RSD';
-  document.getElementById('stat-kg').textContent = totalKg.toLocaleString() + ' kg';
-}
+  const promet = STATE.fakture.reduce((s,f) => s + Number(f.ukupno), 0);
+  const prometOtkup = STATE.otkup.reduce((s,f) => s + Number(f.ukupno), 0);
+  document.getElementById('s-promet').textContent = promet.toLocaleString();
+  document.getElementById('s-promet-otkup').textContent = prometOtkup.toLocaleString();
 
-function renderOtkupTable() {
-  const tbody = document.getElementById('otkup-table');
-  if (!tbody) return;
-  if (otkupi.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="empty-icon">📦</div><div class="empty-text">Nema otkupa jos</div></div></td></tr>';
+  const sve = [
+    ...STATE.fakture.slice(0,5).map(f => ({...f, tip:'prodaja', stranka:f.kupac})),
+    ...STATE.otkup.slice(0,5).map(f => ({...f, tip:'otkup', stranka:f.dobavljac}))
+  ].slice(0, 8);
+
+  const tbody = document.getElementById('t-dashboard');
+  if (sve.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty"><div class="empty-icon">◈</div><div class="empty-text">Nema transakcija</div></div></td></tr>`;
     return;
   }
-  tbody.innerHTML = otkupi.map(f => `
+  tbody.innerHTML = sve.map(f => `
     <tr>
-      <td class="td-primary">#${f.br}</td>
+      <td><span class="tag ${f.tip === 'prodaja' ? 'badge-red' : 'badge-green'}">${f.tip === 'prodaja' ? '▼ PRODAJA' : '▲ OTKUP'}</span></td>
+      <td class="td-main">#${f.br}</td>
       <td>${f.datum}</td>
-      <td style="color:var(--text);font-weight:600">${f.kupac}</td>
-      <td><span class="badge" style="background:rgba(76,175,121,0.1);color:var(--green)">${f.metal}</span></td>
-      <td style="font-family:var(--font-mono)">${f.kolicina.toLocaleString()} kg</td>
-      <td style="font-family:var(--font-mono)">${f.cena.toLocaleString()} RSD</td>
-      <td style="font-family:var(--font-mono);color:var(--green);font-weight:700">${f.ukupno.toLocaleString()} RSD</td>
+      <td style="color:var(--text);font-weight:600">${f.stranka}</td>
+      <td><span class="tag badge-green">${f.metal}</span></td>
+      <td>${Number(f.kolicina).toLocaleString()} kg</td>
+      <td class="${f.tip === 'prodaja' ? 'td-red' : 'td-green'}">${Number(f.ukupno).toLocaleString()} RSD</td>
     </tr>`).join('');
 }
 
-function renderFaktureTable() {
-  const tbody = document.getElementById('fakture-table');
-  if (fakture.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="empty-icon">📄</div><div class="empty-text">Nema faktura jos</div></div></td></tr>';
-    return;
-  }
-  tbody.innerHTML = fakture.map(f => `
-    <tr>
-      <td class="td-primary">#${f.br}</td>
-      <td>${f.datum}</td>
-      <td style="color:var(--text);font-weight:600">${f.kupac}</td>
-      <td><span class="badge badge-metal">${f.metal}</span></td>
-      <td style="font-family:var(--font-mono)">${f.kolicina.toLocaleString()} kg</td>
-      <td style="font-family:var(--font-mono)">${f.cena.toLocaleString()} RSD</td>
-      <td style="font-family:var(--font-mono);color:var(--accent);font-weight:700">${f.ukupno.toLocaleString()} RSD</td>
-    </tr>`).join('');
-}
-
+// ── LAGER ─────────────────────────────────────────────────
 function renderLager() {
   const grid = document.getElementById('lager-grid');
-  const tbody = document.getElementById('lager-table');
-  const metals = Object.keys(LAGER_KG);
+  const tbody = document.getElementById('t-lager');
+  const maxKg = Math.max(...STATE.lager.map(l => Number(l.kg)), 1);
 
-  grid.innerHTML = metals.map(m => {
-    const kg = LAGER_KG[m] || 0;
-    const badge = kg > 1000 ? 'badge-ok' : kg > 300 ? 'badge-warn' : 'badge-low';
-    const status = kg > 1000 ? 'Dobro' : kg > 300 ? 'Nizak' : 'Kriticno';
-    const barPct = Math.min(100, Math.max(4, (kg / 5000) * 100));
-    const fillClass = kg > 1000 ? 'fill-green' : kg > 300 ? 'fill-yellow' : 'fill-red';
+  grid.innerHTML = STATE.lager.map(l => {
+    const kg = Number(l.kg);
+    const pct = Math.min(100, Math.max(2, (kg / maxKg) * 100));
+    const fillClass = pct > 50 ? '' : pct > 20 ? 'warn' : 'danger';
     return `
       <div class="lager-card">
-        <div class="lager-top">
-          <div>
-            <div class="lager-name">${m}</div>
-            <div class="lager-kg" style="font-size:18px;font-weight:800;color:var(--text)">${kg.toLocaleString()} kg</div>
-          </div>
-          <span class="badge ${badge}">${status}</span>
-        </div>
-        <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${barPct}%"></div></div>
-        <div class="lager-meta">
-          <span>Trenutno stanje</span>
-          <span>${kg.toLocaleString()} kg dostupno</span>
-        </div>
+        <div class="lager-metal">${l.metal}</div>
+        <div class="lager-kg">${kg.toLocaleString()}</div>
+        <div class="lager-unit">kg dostupno</div>
+        <div class="lager-bar"><div class="lager-fill ${fillClass}" style="width:${pct}%"></div></div>
       </div>`;
   }).join('');
 
-  tbody.innerHTML = metals.map(m => {
-    const kg = LAGER_KG[m] || 0;
-    const badge = kg > 1000 ? 'badge-ok' : kg > 300 ? 'badge-warn' : 'badge-low';
-    const status = kg > 1000 ? '● Dobro' : kg > 300 ? '● Nizak' : '● Kriticno';
+  const cenovnikMap = {};
+  STATE.cenovnik.forEach(c => cenovnikMap[c.metal] = Number(c.cena));
+
+  tbody.innerHTML = STATE.lager.map(l => {
+    const kg = Number(l.kg);
+    const cena = cenovnikMap[l.metal] || 0;
+    const vrednost = kg * cena;
     return `<tr>
-      <td class="td-primary">${m}</td>
-      <td style="font-family:var(--font-mono);color:var(--green);font-weight:700;font-size:15px">${kg.toLocaleString()} kg</td>
-      <td><span class="badge ${badge}">${status}</span></td>
+      <td class="td-main">${l.metal}</td>
+      <td class="td-green">${kg.toLocaleString()} kg</td>
+      <td>${cena.toLocaleString()} RSD</td>
+      <td>${vrednost.toLocaleString()} RSD</td>
     </tr>`;
   }).join('');
 }
 
-// ── TOAST ────────────────────────────────────────────────────
-function showToast(type, title, msg) {
-  const t = document.getElementById('toast');
-  const icon = document.getElementById('toast-icon');
-  document.getElementById('toast-title').textContent = title;
-  document.getElementById('toast-msg').textContent = msg;
-  icon.textContent = type === 'success' ? '✓' : '✕';
-  icon.className = 'toast-icon ' + type;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 4000);
+// ── FAKTURE ───────────────────────────────────────────────
+function renderFakture() {
+  const tbody = document.getElementById('t-fakture');
+  if (STATE.fakture.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="empty-icon">▤</div><div class="empty-text">Nema faktura</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = STATE.fakture.map(f => `
+    <tr>
+      <td class="td-main">#${f.br}</td>
+      <td>${f.datum}</td>
+      <td style="color:var(--text);font-weight:600">${f.kupac}</td>
+      <td><span class="tag badge-green">${f.metal}</span></td>
+      <td>${Number(f.kolicina).toLocaleString()} kg</td>
+      <td>${Number(f.cena).toLocaleString()} RSD</td>
+      <td class="td-red">${Number(f.ukupno).toLocaleString()} RSD</td>
+      <td><button onclick='stampaFaktura(${JSON.stringify(f)}, "prodaja")' style="background:none;border:1px solid var(--border2);color:var(--text2);padding:4px 8px;border-radius:4px;cursor:pointer;font-family:var(--font);font-size:10px;">PDF</button></td>
+    </tr>`).join('');
 }
 
-// ── INIT ─────────────────────────────────────────────────────
-document.getElementById('f-datum').value = new Date().toISOString().split('T')[0];
-renderLager();
-renderDashboard();
+// ── OTKUP ─────────────────────────────────────────────────
+function renderOtkup() {
+  const tbody = document.getElementById('t-otkup');
+  if (STATE.otkup.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="empty-icon">▣</div><div class="empty-text">Nema otkupa</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = STATE.otkup.map(f => `
+    <tr>
+      <td class="td-main">#${f.br}</td>
+      <td>${f.datum}</td>
+      <td style="color:var(--text);font-weight:600">${f.dobavljac}</td>
+      <td><span class="tag badge-green">${f.metal}</span></td>
+      <td>${Number(f.kolicina).toLocaleString()} kg</td>
+      <td>${Number(f.cena).toLocaleString()} RSD</td>
+      <td class="td-green">${Number(f.ukupno).toLocaleString()} RSD</td>
+      <td><button onclick='stampaFaktura(${JSON.stringify(f)}, "otkup")' style="background:none;border:1px solid var(--border2);color:var(--text2);padding:4px 8px;border-radius:4px;cursor:pointer;font-family:var(--font);font-size:10px;">PDF</button></td>
+    </tr>`).join('');
+}
 
-function generisiPDF(faktura) {
+// ── CENOVNIK ──────────────────────────────────────────────
+function renderCenovnik() {
+  const tbody = document.getElementById('t-cenovnik');
+  const select = document.getElementById('f-metal');
+  const currentVal = select.value;
+
+  tbody.innerHTML = STATE.cenovnik.map(c => `
+    <tr>
+      <td class="td-main">${c.metal}</td>
+      <td class="td-green">${Number(c.cena).toLocaleString()} RSD</td>
+    </tr>`).join('');
+
+  select.innerHTML = '<option value="">Izaberi...</option>' +
+    STATE.cenovnik.map(c => `<option value="${c.metal}" data-cena="${c.cena}">${c.metal}</option>`).join('');
+
+  if (currentVal) select.value = currentVal;
+}
+
+// ── TIP TOGGLE ────────────────────────────────────────────
+function setTip(tip) {
+  currentTip = tip;
+  const btnP = document.getElementById('btn-prodaja');
+  const btnO = document.getElementById('btn-otkup');
+  const btn = document.getElementById('submit-btn');
+  const label = document.getElementById('stranka-label');
+
+  btnP.className = 'tip-btn' + (tip === 'prodaja' ? ' active-prodaja' : '');
+  btnO.className = 'tip-btn' + (tip === 'otkup' ? ' active-otkup' : '');
+
+  if (tip === 'prodaja') {
+    btn.className = 'btn btn-prodaja';
+    btn.textContent = '▼ Generisi fakturu';
+    label.textContent = 'Naziv kupca';
+    document.getElementById('f-stranka').placeholder = 'npr. ABC Metal doo';
+  } else {
+    btn.className = 'btn btn-otkup';
+    btn.textContent = '▲ Evidentiraj otkup';
+    label.textContent = 'Naziv dobavljaca';
+    document.getElementById('f-stranka').placeholder = 'npr. Dobavljac doo';
+  }
+  updatePreview();
+}
+
+// ── PREVIEW ───────────────────────────────────────────────
+function updatePreview() {
+  const sel = document.getElementById('f-metal');
+  const opt = sel.options[sel.selectedIndex];
+  const cena = opt ? Number(opt.dataset.cena) : 0;
+  const kg = parseFloat(document.getElementById('f-kg').value) || 0;
+  const box = document.getElementById('preview');
+
+  if (!sel.value || !kg) { box.style.display = 'none'; return; }
+
+  box.style.display = 'block';
+  document.getElementById('prev-metal').textContent = sel.value;
+  document.getElementById('prev-kg').textContent = kg.toLocaleString() + ' kg';
+  document.getElementById('prev-cena').textContent = cena.toLocaleString() + ' RSD';
+  document.getElementById('prev-ukupno').textContent = (kg * cena).toLocaleString() + ' RSD';
+}
+
+// ── SUBMIT ────────────────────────────────────────────────
+function submitTransakcija() {
+  const stranka = document.getElementById('f-stranka').value.trim();
+  const metal = document.getElementById('f-metal').value;
+  const kg = parseFloat(document.getElementById('f-kg').value);
+  const datum = document.getElementById('f-datum').value;
+  const sel = document.getElementById('f-metal');
+  const cena = Number(sel.options[sel.selectedIndex]?.dataset.cena || 0);
+
+  if (!stranka || !metal || !kg || !datum) {
+    showToast('error', 'Greska', 'Popuni sva polja.');
+    return;
+  }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saljem...';
+
+  // Sacuvaj vrednosti
+  const savedStranka = stranka;
+  const savedMetal = metal;
+  const savedKg = kg;
+  const savedDatum = datum;
+  const savedCena = cena;
+  const savedTip = currentTip;
+  const ukupno = kg * cena;
+
+  // Posalji na Sheets
+  const form = document.createElement('form');
+  form.method = 'GET';
+  form.action = API;
+  form.target = 'hidden_iframe';
+  const fields = { action: savedTip, stranka: savedStranka, metal: savedMetal, kolicina: savedKg, datum: savedDatum, cena: savedCena };
+  Object.entries(fields).forEach(([k,v]) => {
+    const inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = k; inp.value = v;
+    form.appendChild(inp);
+  });
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+
+  // Reset forme
+  document.getElementById('f-stranka').value = '';
+  document.getElementById('f-metal').value = '';
+  document.getElementById('f-kg').value = '';
+  document.getElementById('preview').style.display = 'none';
+
+  setTimeout(() => {
+    btn.disabled = false;
+    setTip(savedTip);
+
+    // Generisi PDF
+    const faktura = {
+      br: (savedTip === 'prodaja' ? STATE.fakture.length : STATE.otkup.length) + 1,
+      datum: savedDatum,
+      stranka: savedStranka,
+      metal: savedMetal,
+      kolicina: savedKg,
+      cena: savedCena,
+      ukupno: ukupno,
+      tip: savedTip
+    };
+    generisiPDF(faktura);
+
+    showToast(
+      savedTip === 'prodaja' ? 'prodaja' : 'otkup',
+      savedTip === 'prodaja' ? 'Faktura kreirana' : 'Otkup evidentiran',
+      savedStranka + ' · ' + savedKg.toLocaleString() + ' kg ' + savedMetal + ' · ' + ukupno.toLocaleString() + ' RSD'
+    );
+
+    // Reload podataka iz Sheets
+    setTimeout(loadData, 2000);
+  }, 1500);
+}
+
+// ── PDF ───────────────────────────────────────────────────
+function generisiPDF(f) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
+  const jeProdaja = f.tip === 'prodaja';
 
   // Header
-  doc.setFillColor(26, 26, 46);
-  doc.rect(0, 0, 210, 40, 'F');
-  doc.setTextColor(232, 197, 71);
-  doc.setFontSize(22);
-  doc.setFont('helvetica', 'bold');
-  doc.text('MetalFlow', 15, 18);
-  doc.setTextColor(170, 170, 170);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Sistem upravljanja sekundarnim metalom', 15, 27);
+  doc.setFillColor(10, 10, 10);
+  doc.rect(0, 0, 210, 42, 'F');
+  doc.setDrawColor(76, 175, 121);
+  doc.setLineWidth(1);
+  doc.line(0, 42, 210, 42);
 
-  // Title
-  doc.setTextColor(192, 57, 43);
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  var docTip = faktura.tip === 'otkup' ? 'OTKUP #' : 'FAKTURA #';
-  var strankaLabel = faktura.tip === 'otkup' ? 'Dobavljac:' : 'Kupac:';
-  doc.text(docTip + faktura.br, 15, 55);
+  doc.setTextColor(76, 175, 121);
+  doc.setFontSize(20);
+  doc.setFont('courier', 'bold');
+  doc.text('JUNGIC RECYCLING', 15, 18);
 
-  // Info box
-  doc.setFillColor(245, 245, 245);
-  doc.rect(15, 62, 180, 28, 'F');
-  doc.setTextColor(100, 100, 100);
+  doc.setTextColor(136, 136, 136);
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Datum:', 20, 72);
-  doc.text(strankaLabel, 80, 72);
-  doc.setTextColor(30, 30, 30);
-  doc.setFont('helvetica', 'bold');
-  doc.text(String(faktura.datum), 20, 80);
-  doc.text(String(faktura.kupac), 80, 80);
+  doc.setFont('courier', 'normal');
+  doc.text('SISTEM UPRAVLJANJA SEKUNDARNIM METALOM', 15, 27);
+
+  doc.setTextColor(jeProdaja ? 224 : 76, jeProdaja ? 92 : 175, jeProdaja ? 58 : 121);
+  doc.setFontSize(13);
+  doc.setFont('courier', 'bold');
+  doc.text((jeProdaja ? 'FAKTURA' : 'OTKUPNICA') + ' #' + f.br, 15, 37);
+
+  // Info
+  doc.setFillColor(20, 20, 20);
+  doc.rect(15, 50, 180, 26, 'F');
+  doc.setTextColor(68, 68, 68);
+  doc.setFontSize(8);
+  doc.setFont('courier', 'normal');
+  doc.text('DATUM', 22, 60);
+  doc.text(jeProdaja ? 'KUPAC' : 'DOBAVLJAC', 80, 60);
+  doc.setTextColor(240, 240, 240);
+  doc.setFont('courier', 'bold');
+  doc.setFontSize(10);
+  doc.text(String(f.datum), 22, 70);
+  doc.text(String(f.stranka), 80, 70);
 
   // Table header
-  doc.setFillColor(26, 26, 46);
-  doc.rect(15, 100, 180, 10, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Metal', 20, 107);
-  doc.text('Kolicina (kg)', 75, 107);
-  doc.text('Cena/kg (RSD)', 115, 107);
-  doc.text('Ukupno (RSD)', 155, 107);
+  doc.setFillColor(26, 26, 26);
+  doc.rect(15, 85, 180, 9, 'F');
+  doc.setTextColor(68, 68, 68);
+  doc.setFontSize(8);
+  doc.setFont('courier', 'normal');
+  doc.text('METAL', 20, 91);
+  doc.text('KOLICINA', 75, 91);
+  doc.text('CENA/KG', 115, 91);
+  doc.text('UKUPNO', 158, 91);
 
   // Table row
-  doc.setFillColor(249, 249, 249);
-  doc.rect(15, 110, 180, 12, 'F');
-  doc.setTextColor(30, 30, 30);
-  doc.setFont('helvetica', 'normal');
-  doc.text(String(faktura.metal), 20, 118);
-  doc.text(String(faktura.kolicina), 75, 118);
-  doc.text(String(faktura.cena), 115, 118);
-  doc.text(String(faktura.ukupno), 155, 118);
+  doc.setFillColor(17, 17, 17);
+  doc.rect(15, 94, 180, 12, 'F');
+  doc.setTextColor(240, 240, 240);
+  doc.setFontSize(11);
+  doc.setFont('courier', 'bold');
+  doc.text(String(f.metal), 20, 102);
+  doc.text(Number(f.kolicina).toLocaleString() + ' kg', 75, 102);
+  doc.text(Number(f.cena).toLocaleString() + ' RSD', 115, 102);
+  doc.text(Number(f.ukupno).toLocaleString() + ' RSD', 158, 102);
 
-  // Total line
-  doc.setDrawColor(26, 26, 46);
+  // Total
+  doc.setDrawColor(76, 175, 121);
   doc.setLineWidth(0.5);
-  doc.line(15, 130, 195, 130);
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 30, 30);
-  doc.text('UKUPNO ZA NAPLATU:', 15, 142);
-  doc.setTextColor(192, 57, 43);
-  doc.setFontSize(16);
-  doc.text(String(faktura.ukupno) + ' RSD', 130, 142);
+  doc.line(15, 116, 195, 116);
+  doc.setTextColor(136, 136, 136);
+  doc.setFontSize(10);
+  doc.setFont('courier', 'normal');
+  doc.text('UKUPNO ZA NAPLATU:', 15, 128);
+  doc.setTextColor(jeProdaja ? 224 : 76, jeProdaja ? 92 : 175, jeProdaja ? 58 : 121);
+  doc.setFontSize(18);
+  doc.setFont('courier', 'bold');
+  doc.text(Number(f.ukupno).toLocaleString() + ' RSD', 115, 128);
 
   // Footer
-  doc.setFillColor(26, 26, 46);
-  doc.rect(0, 270, 210, 27, 'F');
-  doc.setTextColor(170, 170, 170);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text('MetalFlow — Automatizovani sistem fakturisanja', 15, 281);
+  doc.setFillColor(10, 10, 10);
+  doc.rect(0, 272, 210, 25, 'F');
+  doc.setDrawColor(76, 175, 121);
+  doc.line(0, 272, 210, 272);
+  doc.setTextColor(68, 68, 68);
+  doc.setFontSize(8);
+  doc.setFont('courier', 'normal');
+  doc.text('Jungic Recycling — Automatizovani sistem fakturisanja', 15, 282);
   doc.text('Generisano: ' + new Date().toLocaleString('sr'), 15, 289);
 
-  var prefix = faktura.tip === 'otkup' ? 'Otkup' : 'Faktura';
-  doc.save(prefix + '_' + faktura.br + '_' + faktura.kupac + '.pdf');
+  const prefix = jeProdaja ? 'Faktura' : 'Otkupnica';
+  doc.save(prefix + '_' + f.br + '_' + f.stranka + '.pdf');
 }
-</script>
 
-<iframe name="hidden_iframe" style="display:none"></iframe>
+function stampaFaktura(f, tip) {
+  generisiPDF({...f, stranka: tip === 'prodaja' ? f.kupac : f.dobavljac, tip});
+}
+
+// ── NAVIGATION ────────────────────────────────────────────
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (el) el.classList.add('active');
+  closeNav();
+  loadData();
+}
+
+function toggleNav() {
+  document.getElementById('nav').classList.toggle('open');
+  document.getElementById('hamburger').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+
+function closeNav() {
+  document.getElementById('nav').classList.remove('open');
+  document.getElementById('hamburger').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+// ── TOAST ─────────────────────────────────────────────────
+function showToast(tip, title, msg) {
+  const t = document.getElementById('toast');
+  const icons = { prodaja: '▼', otkup: '▲', error: '✕', success: '✓' };
+  document.getElementById('toast-icon').textContent = icons[tip] || '✓';
+  document.getElementById('toast-icon').style.color = tip === 'otkup' ? 'var(--green)' : tip === 'error' ? 'var(--red)' : 'var(--red)';
+  document.getElementById('toast-title').textContent = title;
+  document.getElementById('toast-msg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 4500);
+}
+
+// ── CLOCK ─────────────────────────────────────────────────
+function updateClock() {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('sr', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── INIT ──────────────────────────────────────────────────
+document.getElementById('f-datum').value = new Date().toISOString().split('T')[0];
+
+// Responsive grid
+function checkGrid() {
+  const grid = document.getElementById('trans-grid');
+  if (grid) grid.style.gridTemplateColumns = window.innerWidth < 768 ? '1fr' : '1fr 1.2fr';
+}
+window.addEventListener('resize', checkGrid);
+checkGrid();
+
+loadData();
+</script>
 </body>
 </html>
