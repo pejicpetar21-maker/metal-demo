@@ -1157,7 +1157,7 @@ function submitForm() {
   document.body.appendChild(form);
   form.submit();
   document.body.removeChild(form);
-  setTimeout(() => processLocally(kupac, metal, kolicina, datum), 1500);
+  setTimeout(() => processLocally(kupac, metal, kolicina, datum, tip), 1500);
 }
 
 function processLocally(kupac, metal, kolicina, datum, tip) {
