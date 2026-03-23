@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">
 function confirmReset() {
   const modal = document.createElement('div');
+  modal.className = 'jr-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:999;display:flex;align-items:center;justify-content:center;';
   modal.innerHTML = `
     <div style="background:var(--surface);border:1px solid var(--red);border-radius:10px;padding:28px;max-width:360px;width:90%;text-align:center;">
@@ -14,7 +15,7 @@ function confirmReset() {
       <div style="font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;color:var(--red)">Potvrdi reset</div>
       <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:20px">Bice obrisane sve fakture, otkupi i lager ce biti resetovan na 0. Ova akcija se ne moze ponistiti.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <button onclick="this.closest('div[style]').remove()" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border2);padding:10px;border-radius:6px;font-family:var(--font);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">Otkazi</button>
+        <button onclick="closeResetModal()" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border2);padding:10px;border-radius:6px;font-family:var(--font);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">Otkazi</button>
         <button onclick="doReset(this)" style="background:var(--red);color:#fff;border:none;padding:10px;border-radius:6px;font-family:var(--font);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">Resetuj</button>
       </div>
     </div>`;
@@ -37,10 +38,30 @@ function doReset(btn) {
   document.body.removeChild(form);
 
   setTimeout(() => {
-    document.querySelector('div[style*="position:fixed"]').remove();
-    showToast('success', 'Reset uspesno', 'Svi podaci su obrisani. Sistem je spreman.');
+    // Zatvori confirm modal
+    const modals = document.querySelectorAll('.jr-modal');
+    modals.forEach(m => m.remove());
+
+    // Prikazi success modal
+    const successModal = document.createElement('div');
+    successModal.className = 'jr-modal';
+    successModal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:999;display:flex;align-items:center;justify-content:center;';
+    successModal.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--green);border-radius:10px;padding:28px;max-width:360px;width:90%;text-align:center;">
+        <div style="font-size:40px;margin-bottom:12px">✅</div>
+        <div style="font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;color:var(--green)">Reset uspesno</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:20px">Sve fakture i otkupi su obrisani.<br>Lager je resetovan na 0.<br>Sistem je spreman za demonstraciju.</div>
+        <button onclick="closeResetModal()" style="background:var(--green);color:#000;border:none;padding:12px 32px;border-radius:6px;font-family:var(--font);font-size:12px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-weight:700;width:100%">OK — Zatvori</button>
+      </div>`;
+    document.body.appendChild(successModal);
+
     loadData();
   }, 2000);
+}
+
+function closeResetModal() {
+  const modals = document.querySelectorAll('.jr-modal');
+  modals.forEach(m => m.remove());
 }
 
 </script>
@@ -1102,36 +1123,37 @@ function setTip(tip) {
 // ── PREVIEW ───────────────────────────────────────────────
 function updatePreview() {
   const sel = document.getElementById('f-metal');
-  const opt = sel.options[sel.selectedIndex];
-  const cena = opt ? Number(opt.dataset.cena) : 0;
   const kg = parseFloat(document.getElementById('f-kg').value) || 0;
   const box = document.getElementById('preview');
   const metalStatus = document.getElementById('metal-status');
-  const metalStatusKg = document.getElementById('metal-status-kg');
 
-  // Prikazi trenutno stanje metala
-  if (sel.value) {
-    const lagerItem = STATE.lager.find(l => l.metal === sel.value);
-    const trenutnoKg = lagerItem ? Number(lagerItem.kg) : 0;
-    metalStatusKg.textContent = trenutnoKg.toLocaleString();
-    metalStatus.style.display = 'block';
-
-    // Stanje posle transakcije
-    if (kg > 0) {
-      const posle = currentTip === 'prodaja' ? trenutnoKg - kg : trenutnoKg + kg;
-      const boja = posle < 0 ? 'var(--red)' : 'var(--green)';
-      metalStatus.innerHTML = 
-        'Trenutno: <span style="color:var(--green);font-weight:700">' + trenutnoKg.toLocaleString() + ' kg</span>' +
-        ' → Posle: <span style="color:' + boja + ';font-weight:700">' + posle.toLocaleString() + ' kg</span>';
-    } else {
-      metalStatus.innerHTML = 'Trenutno stanje: <span id="metal-status-kg" style="color:var(--green);font-weight:700">' + trenutnoKg.toLocaleString() + '</span> kg';
-    }
-  } else {
+  if (!sel.value) {
     metalStatus.style.display = 'none';
+    box.style.display = 'none';
+    return;
   }
 
-  if (!sel.value || !kg) { box.style.display = 'none'; return; }
+  // Trenutno stanje iz STATE
+  const lagerItem = STATE.lager.find(l => l.metal === sel.value);
+  const trenutnoKg = lagerItem ? Number(lagerItem.kg) : 0;
+  const opt = sel.options[sel.selectedIndex];
+  const cena = opt ? Number(opt.dataset.cena) : 0;
 
+  // Prikaz stanja
+  metalStatus.style.display = 'block';
+  if (kg > 0) {
+    const posle = currentTip === 'prodaja' ? trenutnoKg - kg : trenutnoKg + kg;
+    const bojaPostle = posle < 0 ? 'var(--red)' : 'var(--green)';
+    metalStatus.innerHTML =
+      'Trenutno: <span style="color:var(--green);font-weight:700">' + trenutnoKg.toLocaleString() + ' kg</span>' +
+      ' &rarr; Posle: <span style="color:' + bojaPostle + ';font-weight:700">' + posle.toLocaleString() + ' kg</span>';
+  } else {
+    metalStatus.innerHTML =
+      'Trenutno stanje: <span style="color:var(--green);font-weight:700">' + trenutnoKg.toLocaleString() + ' kg</span>';
+  }
+
+  // Preview fakture
+  if (!kg) { box.style.display = 'none'; return; }
   box.style.display = 'block';
   document.getElementById('prev-metal').textContent = sel.value;
   document.getElementById('prev-kg').textContent = kg.toLocaleString() + ' kg';
@@ -1368,6 +1390,7 @@ loadData();
 
 function confirmReset() {
   const modal = document.createElement('div');
+  modal.className = 'jr-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:999;display:flex;align-items:center;justify-content:center;';
   modal.innerHTML = `
     <div style="background:var(--surface);border:1px solid var(--red);border-radius:10px;padding:28px;max-width:360px;width:90%;text-align:center;">
@@ -1375,7 +1398,7 @@ function confirmReset() {
       <div style="font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;color:var(--red)">Potvrdi reset</div>
       <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:20px">Bice obrisane sve fakture, otkupi i lager ce biti resetovan na 0. Ova akcija se ne moze ponistiti.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <button onclick="this.closest('div[style]').remove()" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border2);padding:10px;border-radius:6px;font-family:var(--font);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">Otkazi</button>
+        <button onclick="closeResetModal()" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border2);padding:10px;border-radius:6px;font-family:var(--font);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">Otkazi</button>
         <button onclick="doReset(this)" style="background:var(--red);color:#fff;border:none;padding:10px;border-radius:6px;font-family:var(--font);font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer">Resetuj</button>
       </div>
     </div>`;
@@ -1398,10 +1421,30 @@ function doReset(btn) {
   document.body.removeChild(form);
 
   setTimeout(() => {
-    document.querySelector('div[style*="position:fixed"]').remove();
-    showToast('success', 'Reset uspesno', 'Svi podaci su obrisani. Sistem je spreman.');
+    // Zatvori confirm modal
+    const modals = document.querySelectorAll('.jr-modal');
+    modals.forEach(m => m.remove());
+
+    // Prikazi success modal
+    const successModal = document.createElement('div');
+    successModal.className = 'jr-modal';
+    successModal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:999;display:flex;align-items:center;justify-content:center;';
+    successModal.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--green);border-radius:10px;padding:28px;max-width:360px;width:90%;text-align:center;">
+        <div style="font-size:40px;margin-bottom:12px">✅</div>
+        <div style="font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;color:var(--green)">Reset uspesno</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:20px">Sve fakture i otkupi su obrisani.<br>Lager je resetovan na 0.<br>Sistem je spreman za demonstraciju.</div>
+        <button onclick="closeResetModal()" style="background:var(--green);color:#000;border:none;padding:12px 32px;border-radius:6px;font-family:var(--font);font-size:12px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-weight:700;width:100%">OK — Zatvori</button>
+      </div>`;
+    document.body.appendChild(successModal);
+
     loadData();
   }, 2000);
+}
+
+function closeResetModal() {
+  const modals = document.querySelectorAll('.jr-modal');
+  modals.forEach(m => m.remove());
 }
 
 </script>
